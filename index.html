@@ -5,6 +5,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Dallas Finance Dashboard</title>
+  <link rel="icon" type="image/png" href="dfd-logo.png" />
+  <link rel="apple-touch-icon" href="dfd-logo.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
@@ -84,19 +86,15 @@
     .brand {
       display: flex;
       align-items: center;
-      gap: 10px;
+      justify-content: center;
       margin-bottom: 14px;
-      font-size: 1.12rem;
-      font-weight: 800;
-      color: var(--info);
     }
 
-    .dot {
-      width: 10px;
-      height: 10px;
-      background: linear-gradient(45deg, var(--info), #f4ddaa);
-      border-radius: 50%;
-      box-shadow: 0 0 18px rgba(216, 181, 106, 0.72);
+    .brand-logo {
+      width: min(100%, 210px);
+      height: auto;
+      object-fit: contain;
+      display: block;
     }
 
     .sidebar p {
@@ -334,10 +332,25 @@
       justify-content: flex-end;
     }
 
+    .chart-canvas {
+      position: relative;
+      width: 100%;
+    }
+
+    .line-canvas {
+      height: clamp(220px, 35vw, 330px);
+    }
+
+    .pie-canvas {
+      width: min(100%, 320px);
+      aspect-ratio: 1 / 1;
+      margin: 0 auto;
+    }
+
     canvas {
       width: 100% !important;
-      height: 220px !important;
-      max-height: 260px;
+      height: 100% !important;
+      max-height: none;
     }
 
     .chart-head {
@@ -356,11 +369,7 @@
       font-size: 0.8rem;
     }
 
-    #pieChart {
-      height: 260px !important;
-      max-height: 260px;
-      touch-action: manipulation;
-    }
+    #pieChart { touch-action: manipulation; }
 
     .toast {
       position: fixed;
@@ -596,19 +605,19 @@
         right: 12px;
         bottom: 18px;
       }
-      canvas {
-        height: 190px !important;
+      .line-canvas {
+        height: 200px;
       }
-      #pieChart {
-        height: 240px !important;
-        max-height: 240px;
+      .pie-canvas {
+        width: min(100%, 260px);
       }
     }
 
     @media (max-width: 480px) {
       .main { padding: 10px; }
       .sidebar { padding: 12px; }
-      .brand { font-size: 1rem; }
+      .brand { margin-bottom: 10px; }
+      .brand-logo { width: min(100%, 180px); }
       .kpi-value { font-size: 1.06rem; }
       .kpi-label { font-size: 0.74rem; }
       input, select, button { font-size: 0.84rem; min-height: 42px; }
@@ -621,7 +630,9 @@
 <body>
   <div class="app">
     <aside class="sidebar">
-      <div class="brand"><span class="dot"></span> Dallas Finance Dashboard</div>
+      <div class="brand">
+        <img src="dfd-logo.png" alt="Logo Dallas" class="brand-logo" />
+      </div>
       <p>Controle completo dos seus ganhos, gastos, metas e planejamento.</p>
       <div class="actions">
         <button id="btnExport">Exportar JSON</button>
@@ -669,11 +680,15 @@
               <option value="1y">1 ano</option>
             </select>
           </div>
-          <canvas id="lineChart" height="120"></canvas>
+          <div class="chart-canvas line-canvas">
+            <canvas id="lineChart"></canvas>
+          </div>
         </article>
         <article class="card">
           <h3 class="section-title">Categorias de Gastos</h3>
-          <canvas id="pieChart" height="120"></canvas>
+          <div class="chart-canvas pie-canvas">
+            <canvas id="pieChart"></canvas>
+          </div>
         </article>
       </section>
 
@@ -1193,6 +1208,7 @@
             },
             options: {
               ...chartBaseOptions(),
+              responsive: true,
               maintainAspectRatio: false,
             },
           });
@@ -1215,8 +1231,8 @@
               datasets: [{ data: values, backgroundColor: labels.map((_, i) => colors[i % colors.length]) }],
             },
             options: {
-              maintainAspectRatio: true,
-              aspectRatio: 1,
+              responsive: true,
+              maintainAspectRatio: false,
               plugins: {
                 legend: { labels: { color: getCssVar("--muted") } },
               },
