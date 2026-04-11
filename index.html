@@ -1,0 +1,1986 @@
+﻿
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dallas Finance Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg: #0f0f0f;
+      --panel: #171717;
+      --panel-2: #1f1b15;
+      --text: #f8f2e8;
+      --muted: #baae9a;
+      --border: #3a2f1e;
+      --info: #d8b56a;
+      --gain: #57c77a;
+      --expense: #f26464;
+      --warning: #f1c36b;
+      --shadow: 0 12px 34px rgba(0, 0, 0, 0.42);
+      --bg-gradient: radial-gradient(circle at top right, #2a2318 0%, #0f0f0f 35%);
+      --field-bg: #1a1713;
+      --line-soft: #3b3123;
+      --table-hover: #262015;
+      --button-text: #fff8e8;
+      --radius: 10px;
+      --radius-sm: 7px;
+      --transition: 280ms cubic-bezier(0.22, 1, 0.36, 1);
+      --space: clamp(12px, 1.3vw, 18px);
+    }
+
+    [data-theme="light"] {
+      --bg: #f8f5ef;
+      --panel: #ffffff;
+      --panel-2: #f9f4ea;
+      --text: #000000;
+      --muted: #2e2a24;
+      --border: #e2d2b4;
+      --info: #b48935;
+      --gain: #2f9d59;
+      --expense: #d14949;
+      --warning: #c78828;
+      --shadow: 0 12px 30px rgba(80, 57, 14, 0.14);
+      --bg-gradient: radial-gradient(circle at top right, #f1e6d2 0%, #f8f5ef 40%);
+      --field-bg: #fffdf9;
+      --line-soft: #dcc8a4;
+      --table-hover: #f3eadb;
+      --button-text: #111111;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Manrope", "Segoe UI", sans-serif;
+      background: var(--bg-gradient), var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+      line-height: 1.45;
+      transition: background var(--transition), color var(--transition);
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: 248px 1fr;
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      background: linear-gradient(180deg, var(--panel) 0%, var(--panel-2) 100%);
+      border-right: 1px solid var(--border);
+      padding: 18px;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+      font-size: 1.12rem;
+      font-weight: 800;
+      color: var(--info);
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      background: linear-gradient(45deg, var(--info), #f4ddaa);
+      border-radius: 50%;
+      box-shadow: 0 0 18px rgba(216, 181, 106, 0.72);
+    }
+
+    .sidebar p {
+      color: var(--muted);
+      margin: 0 0 8px;
+      font-size: 0.92rem;
+    }
+
+    .actions {
+      margin-top: 14px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .main {
+      padding: var(--space);
+      display: grid;
+      gap: var(--space);
+      align-content: start;
+      min-width: 0;
+      width: min(1400px, 100%);
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 15px;
+      flex-wrap: wrap;
+    }
+
+    .topbar h1 {
+      margin: 0;
+      font-size: clamp(1.05rem, 2.2vw, 1.45rem);
+      font-weight: 800;
+      letter-spacing: -0.01em;
+    }
+
+    .topbar span {
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .grid {
+      display: grid;
+      gap: var(--space);
+    }
+
+    .summary-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .charts-grid {
+      grid-template-columns: 2fr 1fr;
+    }
+
+    .planning-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .card {
+      background: linear-gradient(180deg, var(--panel) 0%, var(--panel-2) 100%);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: clamp(12px, 1.4vw, 16px);
+      transition: transform var(--transition), border-color var(--transition);
+      animation: fadeInUp 360ms var(--transition);
+      min-width: 0;
+      overflow: hidden;
+      transition: transform var(--transition), border-color var(--transition), background var(--transition), box-shadow var(--transition);
+    }
+
+    .card:hover {
+      transform: translateY(-3px);
+      border-color: color-mix(in srgb, var(--info) 45%, var(--border));
+    }
+
+    .card h3 {
+      margin: 0 0 10px;
+      font-size: 0.98rem;
+      letter-spacing: 0.01em;
+    }
+
+    .kpi-label {
+      color: var(--muted);
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .kpi-value {
+      font-size: clamp(1.2rem, 2.6vw, 1.58rem);
+      font-weight: 800;
+      transition: transform var(--transition);
+    }
+
+    .kpi-value.bump {
+      transform: scale(1.04);
+    }
+
+    .positive { color: var(--gain); }
+    .negative { color: var(--expense); }
+    .info { color: var(--info); }
+    .warning { color: var(--warning); }
+
+    .forms-grid {
+      grid-template-columns: 1.2fr 1fr;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .full { grid-column: 1 / -1; }
+
+    label {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 6px;
+      display: block;
+    }
+
+    input, select, button {
+      width: 100%;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--field-bg);
+      color: var(--text);
+      padding: 10px 12px;
+      font-size: 0.9rem;
+      min-height: 44px;
+      transition: border-color var(--transition), background var(--transition);
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--info);
+    }
+
+    button {
+      cursor: pointer;
+      background: linear-gradient(180deg, #8e6e34 0%, #6f5527 100%);
+      border-color: #a88242;
+      font-weight: 700;
+      color: var(--button-text);
+    }
+
+    button:hover { filter: brightness(1.12); }
+
+    .btn-gain { background: linear-gradient(180deg, #3ca765 0%, #2e8250 100%); border-color: #54bf7d; }
+    .btn-danger { background: linear-gradient(180deg, #b84c4c 0%, #8f3737 100%); border-color: #d36c6c; }
+    .btn-ghost { background: var(--panel-2); color: var(--text); }
+
+    .table-wrap {
+      overflow-x: auto;
+      overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 760px;
+      background: color-mix(in srgb, var(--panel) 88%, #000 12%);
+    }
+
+    th, td {
+      padding: 10px;
+      border-bottom: 1px solid var(--line-soft);
+      text-align: left;
+      font-size: 0.9rem;
+      white-space: nowrap;
+    }
+
+    th { color: var(--muted); font-weight: 600; }
+    tr:hover { background: var(--table-hover); }
+
+    .pill {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      border: 1px solid transparent;
+    }
+
+    .pill-gain { color: #9df0c0; border-color: #256f48; background: rgba(40, 199, 111, 0.12); }
+    .pill-expense { color: #ffb4b5; border-color: #7c3031; background: rgba(234, 84, 85, 0.12); }
+
+    .filters {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .desktop-only { display: block; }
+    .mobile-only { display: none; }
+
+    .tx-mobile-list {
+      gap: 10px;
+    }
+
+    .tx-mobile-card {
+      border: 1px solid var(--border);
+      background: color-mix(in srgb, var(--panel) 88%, #000 12%);
+      border-radius: var(--radius);
+      padding: 12px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .tx-mobile-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .tx-mobile-meta {
+      font-size: 0.82rem;
+      color: var(--muted);
+      display: grid;
+      gap: 4px;
+    }
+
+    .tx-mobile-actions {
+      margin-top: 4px;
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    canvas {
+      width: 100% !important;
+      height: 220px !important;
+      max-height: 260px;
+    }
+
+    .toast {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      padding: 10px 14px;
+      border-radius: var(--radius-sm);
+      background: color-mix(in srgb, var(--panel) 86%, #000 14%);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      opacity: 0;
+      transform: translateY(12px);
+      pointer-events: none;
+      transition: all var(--transition);
+      z-index: 999;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .section-title {
+      margin: 0 0 12px;
+      font-size: 0.98rem;
+      font-weight: 800;
+      letter-spacing: 0.01em;
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 0.82rem;
+      margin-top: 8px;
+    }
+
+    .rec-list, .goal-list, .budget-list, .alert-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .rec-item, .goal-item, .budget-item, .alert-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      background: color-mix(in srgb, var(--panel) 88%, #000 12%);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 10px;
+      font-size: 0.85rem;
+    }
+
+    .goal-item, .budget-item, .alert-item {
+      align-items: flex-start;
+    }
+
+    .rec-actions, .goal-actions, .budget-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .rec-actions button, .goal-actions button, .budget-actions button {
+      padding: 6px 8px;
+      font-size: 0.8rem;
+      min-height: 34px;
+    }
+
+    .progress-wrap {
+      width: 100%;
+      margin-top: 8px;
+      background: color-mix(in srgb, var(--panel) 82%, #000 18%);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      height: 8px;
+      overflow: hidden;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #d8b56a 0%, #57c77a 100%);
+      transition: width var(--transition);
+    }
+
+    .plan-summary {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .mini {
+      background: color-mix(in srgb, var(--panel) 88%, #000 12%);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px;
+      font-size: 0.85rem;
+    }
+
+    .site-footer {
+      margin-top: 8px;
+      background: linear-gradient(180deg, var(--panel) 0%, var(--panel-2) 100%);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px;
+      text-align: center;
+      box-shadow: var(--shadow);
+    }
+
+    .site-footer strong {
+      display: block;
+      font-size: 0.95rem;
+      color: var(--info);
+      margin-bottom: 4px;
+    }
+
+    .site-footer p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+
+    .scroll-list {
+      max-height: 240px;
+      overflow: auto;
+      padding-right: 4px;
+      scrollbar-width: thin;
+      scrollbar-color: #8e6e34 transparent;
+    }
+
+    .scroll-list::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    .scroll-list::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, #9c7a3e 0%, #7a5e2f 100%);
+      border-radius: 999px;
+    }
+
+    .theme-fab {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      z-index: 1000;
+      width: 50px;
+      min-width: 50px;
+      height: 50px;
+      min-height: 50px;
+      border-radius: 50%;
+      padding: 0;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      background: linear-gradient(180deg, #8e6e34 0%, #6f5527 100%);
+      color: #fff6e4;
+      backdrop-filter: blur(6px);
+      font-size: 1.15rem;
+      display: grid;
+      place-items: center;
+    }
+
+    .alert-item {
+      border-left: 4px solid var(--warning);
+    }
+
+    .alert-item.danger {
+      border-left-color: var(--expense);
+    }
+
+    .alert-item.good {
+      border-left-color: var(--gain);
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 1160px) {
+      .forms-grid, .charts-grid, .planning-grid { grid-template-columns: 1fr; }
+      .summary-grid { grid-template-columns: 1fr 1fr; }
+      .filters { grid-template-columns: 1fr 1fr; }
+      .plan-summary { grid-template-columns: 1fr; }
+      table { min-width: 680px; }
+    }
+
+    @media (max-width: 900px) {
+      .app { grid-template-columns: 1fr; }
+      .sidebar {
+        position: static;
+        height: auto;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+        padding: 14px;
+        overflow: visible;
+      }
+      .actions {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .main { padding: 14px; }
+      .topbar { align-items: flex-start; }
+      table { min-width: 620px; }
+    }
+
+    @media (max-width: 720px) {
+      .desktop-only { display: none; }
+      .mobile-only { display: block; }
+      .tx-mobile-list.mobile-only { display: grid; }
+      .summary-grid { grid-template-columns: 1fr; }
+      .filters { grid-template-columns: 1fr; }
+      .forms-grid, .planning-grid, .charts-grid, .form-grid { grid-template-columns: 1fr; }
+      .topbar h1 { font-size: 1.02rem; }
+      .topbar span { font-size: 0.78rem; }
+      .card { padding: 12px; border-radius: var(--radius); }
+      .kpi-value { font-size: 1.14rem; }
+      .actions { grid-template-columns: 1fr; }
+      .rec-item, .goal-item, .budget-item, .alert-item {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .rec-actions, .goal-actions, .budget-actions {
+        width: 100%;
+      }
+      .rec-actions button, .goal-actions button, .budget-actions button {
+        flex: 1;
+      }
+      .toast {
+        left: 12px;
+        right: 12px;
+        bottom: 12px;
+      }
+      .theme-fab {
+        right: 12px;
+        bottom: 18px;
+      }
+      canvas {
+        height: 190px !important;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .main { padding: 10px; }
+      .sidebar { padding: 12px; }
+      .brand { font-size: 1rem; }
+      .kpi-value { font-size: 1.06rem; }
+      .kpi-label { font-size: 0.74rem; }
+      input, select, button { font-size: 0.84rem; min-height: 42px; }
+      .tx-mobile-card { padding: 10px; }
+      .section-title { font-size: 0.92rem; }
+      table { min-width: 500px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand"><span class="dot"></span> Dallas Finance Dashboard</div>
+      <p>Controle completo dos seus ganhos, gastos, metas e planejamento.</p>
+      <div class="actions">
+        <button id="btnExport">Exportar JSON</button>
+        <button id="btnImport">Importar JSON</button>
+        <input id="importFile" type="file" accept="application/json" hidden />
+        <button id="btnReset" class="btn-danger">Resetar dados</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <h1>Dallas Finance Dashboard</h1>
+          <span id="todayLabel"></span>
+        </div>
+      </header>
+
+      <section class="grid summary-grid">
+        <article class="card">
+          <div class="kpi-label">Saldo Atual</div>
+          <div id="saldoAtual" class="kpi-value info">R$ 0,00</div>
+        </article>
+        <article class="card">
+          <div class="kpi-label">Total de Ganhos</div>
+          <div id="totalGanhos" class="kpi-value positive">R$ 0,00</div>
+        </article>
+        <article class="card">
+          <div class="kpi-label">Total de Gastos</div>
+          <div id="totalGastos" class="kpi-value negative">R$ 0,00</div>
+        </article>
+        <article class="card">
+          <div class="kpi-label">Planejado no Mês</div>
+          <div id="plannedHealth" class="kpi-value info">Sem plano</div>
+        </article>
+      </section>
+
+      <section class="grid charts-grid">
+        <article class="card">
+          <h3 class="section-title">Evolução Mensal do Saldo</h3>
+          <canvas id="lineChart" height="120"></canvas>
+        </article>
+        <article class="card">
+          <h3 class="section-title">Categorias de Gastos</h3>
+          <canvas id="pieChart" height="120"></canvas>
+        </article>
+      </section>
+
+      <section class="grid planning-grid">
+        <article class="card">
+          <h3 class="section-title">Metas Financeiras</h3>
+          <form id="goalForm" class="form-grid">
+            <input id="goalId" hidden />
+            <div>
+              <label for="goalName">Meta</label>
+              <input id="goalName" required placeholder="Ex: Reserva de emergência" />
+            </div>
+            <div>
+              <label for="goalTarget">Valor alvo</label>
+              <input id="goalTarget" required inputmode="numeric" placeholder="R$ 0,00" />
+            </div>
+            <div>
+              <label for="goalCurrent">Valor atual</label>
+              <input id="goalCurrent" required inputmode="numeric" placeholder="R$ 0,00" />
+            </div>
+            <div>
+              <label for="goalDeadline">Prazo</label>
+              <input id="goalDeadline" type="date" required />
+            </div>
+            <div class="full">
+              <button id="goalSubmitBtn" type="submit">Salvar Meta</button>
+            </div>
+          </form>
+          <div id="goalsList" class="goal-list"></div>
+        </article>
+
+        <article class="card">
+          <h3 class="section-title">Planejamento Mensal</h3>
+          <form id="planForm" class="form-grid">
+            <div>
+              <label for="planMonth">Mês</label>
+              <input id="planMonth" type="month" required />
+            </div>
+            <div>
+              <label for="planIncome">Receita planejada</label>
+              <input id="planIncome" required inputmode="numeric" placeholder="R$ 0,00" />
+            </div>
+            <div>
+              <label for="planExpense">Gasto planejado</label>
+              <input id="planExpense" required inputmode="numeric" placeholder="R$ 0,00" />
+            </div>
+            <div>
+              <label for="planLimit">Limite máximo de gastos</label>
+              <input id="planLimit" required inputmode="numeric" placeholder="R$ 0,00" />
+            </div>
+            <div class="full">
+              <button type="submit">Salvar Planejamento</button>
+            </div>
+          </form>
+
+          <form id="budgetForm" class="form-grid" style="margin-top:10px;">
+            <div>
+              <label for="budgetCategory">Orçamento por categoria</label>
+              <input id="budgetCategory" list="categoriesList" required placeholder="Ex: Alimentação" />
+            </div>
+            <div>
+              <label for="budgetLimit">Limite da categoria</label>
+              <input id="budgetLimit" required inputmode="numeric" placeholder="R$ 0,00" />
+            </div>
+            <div class="full">
+              <button class="btn-ghost" type="submit">Adicionar/Atualizar Categoria</button>
+            </div>
+          </form>
+
+          <div id="planSummary" class="plan-summary"></div>
+          <div id="budgetList" class="budget-list scroll-list"></div>
+        </article>
+      </section>
+
+      <section class="card">
+        <h3 class="section-title">Alertas de Gastos Excessivos</h3>
+        <div id="alertsList" class="alert-list"></div>
+      </section>
+
+      <section class="grid planning-grid">
+        <article class="card">
+          <h3 class="section-title">Aba Crediário</h3>
+          <form id="crediarioLimitForm" class="form-grid">
+            <div>
+              <label for="crediarioLimit">Limite do crediário</label>
+              <input id="crediarioLimit" inputmode="numeric" placeholder="R$ 0,00" required />
+            </div>
+            <div class="full">
+              <button type="submit">Salvar limite</button>
+            </div>
+          </form>
+
+          <form id="crediarioItemForm" class="form-grid" style="margin-top:10px;">
+            <div>
+              <label for="crediarioItemName">Item do crediário</label>
+              <input id="crediarioItemName" placeholder="Ex: TV da sala" required />
+            </div>
+            <div>
+              <label for="crediarioItemValue">Valor do item</label>
+              <input id="crediarioItemValue" inputmode="numeric" placeholder="R$ 0,00" required />
+            </div>
+            <div class="full">
+              <button class="btn-ghost" type="submit">Adicionar item</button>
+            </div>
+          </form>
+
+          <div id="crediarioStats" class="plan-summary"></div>
+          <div class="progress-wrap">
+            <div id="crediarioUsageBar" class="progress-bar"></div>
+          </div>
+          <div id="crediarioList" class="budget-list scroll-list"></div>
+        </article>
+
+        <article class="card">
+          <h3 class="section-title">Aba Salário e INSS</h3>
+          <form id="salaryForm" class="form-grid">
+            <div>
+              <label for="salaryGross">Salário bruto</label>
+              <input id="salaryGross" inputmode="numeric" placeholder="R$ 0,00" required />
+            </div>
+            <div>
+              <label for="salaryInssPercent">INSS (valor)</label>
+              <input id="salaryInssPercent" inputmode="numeric" placeholder="R$ 0,00" required />
+            </div>
+            <div class="full">
+              <button type="submit">Salvar salário</button>
+            </div>
+          </form>
+
+          <div id="salarySummary" class="plan-summary"></div>
+          <p class="hint">Cálculo final: salário bruto - desconto INSS - crediário usado.</p>
+        </article>
+      </section>
+
+      <section class="grid forms-grid">
+        <article class="card">
+          <h3 class="section-title">Adicionar Transação</h3>
+          <form id="txForm" class="form-grid">
+            <div>
+              <label for="txType">Tipo</label>
+              <select id="txType" required>
+                <option value="ganho">Ganho</option>
+                <option value="gasto">Gasto</option>
+              </select>
+            </div>
+            <div>
+              <label for="txValue">Valor</label>
+              <input id="txValue" required inputmode="numeric" placeholder="R$ 0,00" />
+            </div>
+            <div>
+              <label for="txCategory">Categoria</label>
+              <input id="txCategory" list="categoriesList" required placeholder="Ex: Alimentação" />
+            </div>
+            <div>
+              <label for="txDate">Data</label>
+              <input id="txDate" type="date" required />
+            </div>
+            <div class="full">
+              <label for="txDescription">Descrição</label>
+              <input id="txDescription" placeholder="Descrição da transação" />
+            </div>
+            <div class="full">
+              <button class="btn-gain" type="submit">Adicionar</button>
+            </div>
+          </form>
+          <datalist id="categoriesList"></datalist>
+          <p class="hint">Categorias novas serão salvas automaticamente.</p>
+        </article>
+
+        <article class="card">
+          <h3 class="section-title">Gastos Fixos (Mensais)</h3>
+          <form id="recForm" class="form-grid">
+            <input id="recId" hidden />
+            <div>
+              <label for="recName">Nome</label>
+              <input id="recName" required placeholder="Ex: Aluguel" />
+            </div>
+            <div>
+              <label for="recValue">Valor</label>
+              <input id="recValue" required inputmode="numeric" placeholder="R$ 0,00" />
+            </div>
+            <div>
+              <label for="recCategory">Categoria</label>
+              <input id="recCategory" list="categoriesList" required placeholder="Ex: Moradia" />
+            </div>
+            <div>
+              <label for="recDay">Dia do mês</label>
+              <input id="recDay" type="number" min="1" max="28" required placeholder="1-28" />
+            </div>
+            <div class="full">
+              <button id="recSubmitBtn" type="submit">Salvar Gasto Fixo</button>
+            </div>
+          </form>
+          <div id="recurringList" class="rec-list scroll-list"></div>
+        </article>
+      </section>
+
+      <section class="card">
+        <h3 class="section-title">Lista de Transações</h3>
+        <div class="filters">
+          <div>
+            <label for="filterType">Tipo</label>
+            <select id="filterType">
+              <option value="todos">Todos</option>
+              <option value="ganho">Ganhos</option>
+              <option value="gasto">Gastos</option>
+            </select>
+          </div>
+          <div>
+            <label for="filterCategory">Categoria</label>
+            <input id="filterCategory" list="categoriesList" placeholder="Todas" />
+          </div>
+          <div>
+            <label for="filterDate">Data</label>
+            <input id="filterDate" type="month" />
+          </div>
+          <div>
+            <label for="sortDate">Ordenação</label>
+            <select id="sortDate">
+              <option value="desc">Mais recentes</option>
+              <option value="asc">Mais antigas</option>
+            </select>
+          </div>
+        </div>
+        <div class="table-wrap desktop-only">
+          <table>
+            <thead>
+              <tr>
+                <th>Tipo</th>
+                <th>Data</th>
+                <th>Categoria</th>
+                <th>Descrição</th>
+                <th>Valor</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="txTableBody"></tbody>
+          </table>
+        </div>
+        <div id="txMobileList" class="tx-mobile-list mobile-only"></div>
+      </section>
+
+      <footer class="site-footer">
+        <strong>Feito com &lt;3 Por DallaTheDev</strong>
+        <p>Site feito apenas para uso pessoal, não sendo permitida a comercialização do mesmo.</p>
+      </footer>
+    </main>
+  </div>
+
+  <button id="themeToggle" class="theme-fab" type="button" aria-label="Alternar tema" title="Alternar tema">☀</button>
+  <div id="toast" class="toast"></div>
+
+  <script>
+    (() => {
+      const STORAGE_KEY = "findash_data_v2";
+      const THEME_KEY = "findash_theme";
+      const defaultCategories = ["Alimentação", "Transporte", "Moradia", "Lazer", "Outros"];
+
+      const DataManager = {
+        state: {
+          categories: [...defaultCategories],
+          transactions: [],
+          recurring: [],
+          goals: [],
+          monthlyPlans: [],
+          crediario: {
+            limit: 0,
+            items: [],
+          },
+          salary: {
+            gross: 0,
+            inssValue: 0,
+          },
+        },
+
+        load() {
+          const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem("findash_data_v1");
+          if (!raw) return;
+          try {
+            const parsed = JSON.parse(raw);
+            this.state.categories = Array.from(new Set([...(parsed.categories || []), ...defaultCategories]));
+            this.state.transactions = Array.isArray(parsed.transactions) ? parsed.transactions : [];
+            this.state.recurring = Array.isArray(parsed.recurring) ? parsed.recurring : [];
+            this.state.goals = Array.isArray(parsed.goals) ? parsed.goals : [];
+            this.state.monthlyPlans = Array.isArray(parsed.monthlyPlans) ? parsed.monthlyPlans : [];
+            this.state.crediario = {
+              limit: Number(parsed?.crediario?.limit || 0),
+              items: Array.isArray(parsed?.crediario?.items) ? parsed.crediario.items : [],
+            };
+            this.state.salary = {
+              gross: Number(parsed?.salary?.gross || 0),
+              inssValue: Number((parsed?.salary?.inssValue ?? parsed?.salary?.inssPercent) || 0),
+            };
+          } catch {
+            this.save();
+          }
+        },
+
+        save() {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
+        },
+
+        addCategory(name) {
+          const category = String(name || "").trim();
+          if (!category) return;
+          if (!this.state.categories.includes(category)) this.state.categories.push(category);
+        },
+
+        addTransaction(tx) {
+          this.state.transactions.push(tx);
+          this.addCategory(tx.category);
+          this.save();
+        },
+
+        deleteTransaction(id) {
+          this.state.transactions = this.state.transactions.filter((tx) => tx.id !== id);
+          this.save();
+        },
+
+        upsertRecurring(rec) {
+          const idx = this.state.recurring.findIndex((r) => r.id === rec.id);
+          if (idx >= 0) this.state.recurring[idx] = rec;
+          else this.state.recurring.push(rec);
+          this.addCategory(rec.category);
+          this.save();
+        },
+
+        deleteRecurring(id) {
+          this.state.recurring = this.state.recurring.filter((r) => r.id !== id);
+          this.save();
+        },
+
+        upsertGoal(goal) {
+          const idx = this.state.goals.findIndex((g) => g.id === goal.id);
+          if (idx >= 0) this.state.goals[idx] = goal;
+          else this.state.goals.push(goal);
+          this.save();
+        },
+
+        deleteGoal(id) {
+          this.state.goals = this.state.goals.filter((g) => g.id !== id);
+          this.save();
+        },
+
+        getPlanByMonth(month) {
+          return this.state.monthlyPlans.find((p) => p.month === month) || null;
+        },
+
+        upsertMonthlyPlan(plan) {
+          const idx = this.state.monthlyPlans.findIndex((p) => p.month === plan.month);
+          if (idx >= 0) {
+            this.state.monthlyPlans[idx] = {
+              ...this.state.monthlyPlans[idx],
+              ...plan,
+              categoryBudgets: this.state.monthlyPlans[idx].categoryBudgets || [],
+            };
+          } else {
+            this.state.monthlyPlans.push({ ...plan, categoryBudgets: [] });
+          }
+          this.save();
+        },
+
+        upsertCategoryBudget(month, budget) {
+          this.addCategory(budget.category);
+          const plan = this.getPlanByMonth(month);
+          if (!plan) return;
+          const list = plan.categoryBudgets || [];
+          const idx = list.findIndex((b) => b.category.toLowerCase() === budget.category.toLowerCase());
+          if (idx >= 0) {
+            list[idx] = { ...list[idx], ...budget };
+          } else {
+            list.push({ id: generateId(), ...budget });
+          }
+          plan.categoryBudgets = list;
+          this.save();
+        },
+
+        deleteCategoryBudget(month, budgetId) {
+          const plan = this.getPlanByMonth(month);
+          if (!plan) return;
+          plan.categoryBudgets = (plan.categoryBudgets || []).filter((b) => b.id !== budgetId);
+          this.save();
+        },
+
+        setCrediarioLimit(limit) {
+          this.state.crediario.limit = Number(limit || 0);
+          this.save();
+        },
+
+        addCrediarioItem(item) {
+          this.state.crediario.items.push(item);
+          this.save();
+        },
+
+        deleteCrediarioItem(id) {
+          this.state.crediario.items = this.state.crediario.items.filter((item) => item.id !== id);
+          this.save();
+        },
+
+        setSalaryInfo(payload) {
+          this.state.salary.gross = Number(payload.gross || 0);
+          this.state.salary.inssValue = Number(payload.inssValue || 0);
+          this.save();
+        },
+
+        reset() {
+          this.state = {
+            categories: [...defaultCategories],
+            transactions: [],
+            recurring: [],
+            goals: [],
+            monthlyPlans: [],
+            crediario: { limit: 0, items: [] },
+            salary: { gross: 0, inssValue: 0 },
+          };
+          this.save();
+        },
+
+        importFromJson(data) {
+          this.state.categories = Array.from(new Set([...(data.categories || []), ...defaultCategories]));
+          this.state.transactions = Array.isArray(data.transactions) ? data.transactions : [];
+          this.state.recurring = Array.isArray(data.recurring) ? data.recurring : [];
+          this.state.goals = Array.isArray(data.goals) ? data.goals : [];
+          this.state.monthlyPlans = Array.isArray(data.monthlyPlans) ? data.monthlyPlans : [];
+          this.state.crediario = {
+            limit: Number(data?.crediario?.limit || 0),
+            items: Array.isArray(data?.crediario?.items) ? data.crediario.items : [],
+          };
+          this.state.salary = {
+            gross: Number(data?.salary?.gross || 0),
+            inssValue: Number((data?.salary?.inssValue ?? data?.salary?.inssPercent) || 0),
+          };
+          this.save();
+        },
+
+        exportToJson() {
+          return JSON.stringify(this.state, null, 2);
+        },
+
+        applyRecurringForMonth(date = new Date()) {
+          const monthKey = formatMonthKey(date);
+          this.state.recurring.forEach((r) => {
+            const recurringKey = `${r.id}-${monthKey}`;
+            const exists = this.state.transactions.some((tx) => tx.recurringKey === recurringKey);
+            if (exists) return;
+
+            const day = Math.min(Math.max(Number(r.day || 1), 1), 28);
+            const txDate = `${monthKey}-${String(day).padStart(2, "0")}`;
+
+            this.state.transactions.push({
+              id: generateId(),
+              type: "gasto",
+              value: Number(r.value),
+              category: r.category,
+              description: `${r.name} (fixo)`,
+              date: txDate,
+              recurringId: r.id,
+              recurringKey,
+            });
+          });
+
+          this.save();
+        },
+
+        getMonthStats(month) {
+          const txs = this.state.transactions.filter((t) => t.date.startsWith(month));
+          const income = txs.filter((t) => t.type === "ganho").reduce((sum, t) => sum + Number(t.value), 0);
+          const expense = txs.filter((t) => t.type === "gasto").reduce((sum, t) => sum + Number(t.value), 0);
+          const byCategory = txs
+            .filter((t) => t.type === "gasto")
+            .reduce((acc, t) => {
+              acc[t.category] = (acc[t.category] || 0) + Number(t.value);
+              return acc;
+            }, {});
+
+          return { income, expense, byCategory };
+        },
+      };
+
+      const ChartManager = {
+        lineChart: null,
+        pieChart: null,
+
+        renderLine(transactions) {
+          const months = getLastMonths(12);
+          const monthly = new Map(months.map((m) => [m, 0]));
+          transactions.forEach((tx) => {
+            const month = tx.date.slice(0, 7);
+            if (!monthly.has(month)) return;
+            const signal = tx.type === "ganho" ? 1 : -1;
+            monthly.set(month, (monthly.get(month) || 0) + signal * Number(tx.value));
+          });
+
+          const labels = months;
+          const values = labels.map((m) => Number(monthly.get(m) || 0));
+
+          if (this.lineChart) this.lineChart.destroy();
+          this.lineChart = new Chart(document.getElementById("lineChart"), {
+            type: "line",
+            data: {
+              labels: labels.map(formatMonth),
+              datasets: [{
+                label: "Saldo por mês",
+                data: values,
+                borderColor: getCssVar("--info"),
+                backgroundColor: "rgba(184,137,53,0.20)",
+                fill: true,
+                tension: 0.35,
+                pointRadius: 3,
+                pointHoverRadius: 5,
+              }],
+            },
+            options: {
+              ...chartBaseOptions(),
+              maintainAspectRatio: false,
+            },
+          });
+        },
+
+        renderPie(transactions) {
+          const expenses = transactions.filter((tx) => tx.type === "gasto");
+          const byCategory = new Map();
+          expenses.forEach((tx) => byCategory.set(tx.category, (byCategory.get(tx.category) || 0) + Number(tx.value)));
+
+          const labels = [...byCategory.keys()];
+          const values = [...byCategory.values()];
+          const colors = ["#d8b56a", "#b48935", "#8e6e34", "#57c77a", "#f1c36b", "#f26464"];
+
+          if (this.pieChart) this.pieChart.destroy();
+          this.pieChart = new Chart(document.getElementById("pieChart"), {
+            type: "pie",
+            data: {
+              labels,
+              datasets: [{ data: values, backgroundColor: labels.map((_, i) => colors[i % colors.length]) }],
+            },
+            options: {
+              plugins: {
+                legend: { labels: { color: getCssVar("--muted") } },
+              },
+            },
+          });
+        },
+      };
+
+      const UIManager = {
+        els: {},
+
+        init() {
+          this.els = {
+            saldoAtual: byId("saldoAtual"),
+            totalGanhos: byId("totalGanhos"),
+            totalGastos: byId("totalGastos"),
+            plannedHealth: byId("plannedHealth"),
+            txForm: byId("txForm"),
+            txType: byId("txType"),
+            txValue: byId("txValue"),
+            txCategory: byId("txCategory"),
+            txDate: byId("txDate"),
+            txDescription: byId("txDescription"),
+            recForm: byId("recForm"),
+            recId: byId("recId"),
+            recName: byId("recName"),
+            recValue: byId("recValue"),
+            recCategory: byId("recCategory"),
+            recDay: byId("recDay"),
+            recSubmitBtn: byId("recSubmitBtn"),
+            recurringList: byId("recurringList"),
+            goalForm: byId("goalForm"),
+            goalId: byId("goalId"),
+            goalName: byId("goalName"),
+            goalTarget: byId("goalTarget"),
+            goalCurrent: byId("goalCurrent"),
+            goalDeadline: byId("goalDeadline"),
+            goalSubmitBtn: byId("goalSubmitBtn"),
+            goalsList: byId("goalsList"),
+            planForm: byId("planForm"),
+            planMonth: byId("planMonth"),
+            planIncome: byId("planIncome"),
+            planExpense: byId("planExpense"),
+            planLimit: byId("planLimit"),
+            planSummary: byId("planSummary"),
+            budgetForm: byId("budgetForm"),
+            budgetCategory: byId("budgetCategory"),
+            budgetLimit: byId("budgetLimit"),
+            budgetList: byId("budgetList"),
+            alertsList: byId("alertsList"),
+            crediarioLimitForm: byId("crediarioLimitForm"),
+            crediarioItemForm: byId("crediarioItemForm"),
+            crediarioLimit: byId("crediarioLimit"),
+            crediarioItemName: byId("crediarioItemName"),
+            crediarioItemValue: byId("crediarioItemValue"),
+            crediarioStats: byId("crediarioStats"),
+            crediarioUsageBar: byId("crediarioUsageBar"),
+            crediarioList: byId("crediarioList"),
+            salaryForm: byId("salaryForm"),
+            salaryGross: byId("salaryGross"),
+            salaryInssPercent: byId("salaryInssPercent"),
+            salarySummary: byId("salarySummary"),
+            txTableBody: byId("txTableBody"),
+            txMobileList: byId("txMobileList"),
+            filterType: byId("filterType"),
+            filterCategory: byId("filterCategory"),
+            filterDate: byId("filterDate"),
+            sortDate: byId("sortDate"),
+            categoriesList: byId("categoriesList"),
+            toast: byId("toast"),
+            btnReset: byId("btnReset"),
+            btnExport: byId("btnExport"),
+            btnImport: byId("btnImport"),
+            importFile: byId("importFile"),
+            todayLabel: byId("todayLabel"),
+            themeToggle: byId("themeToggle"),
+          };
+
+          applyTheme(loadSavedTheme());
+          this.updateThemeToggleLabel();
+          const now = new Date();
+          const monthKey = formatMonthKey(now);
+          this.els.txDate.value = formatInputDate(now);
+          this.els.planMonth.value = monthKey;
+          this.els.filterDate.value = monthKey;
+          this.els.todayLabel.textContent = `Hoje: ${formatDateBr(formatInputDate(now))}`;
+          this.setupEvents();
+        },
+
+        setupEvents() {
+          [this.els.txValue, this.els.recValue, this.els.goalTarget, this.els.goalCurrent, this.els.planIncome, this.els.planExpense, this.els.planLimit, this.els.budgetLimit, this.els.crediarioLimit, this.els.crediarioItemValue, this.els.salaryGross, this.els.salaryInssPercent]
+            .forEach((el) => el.addEventListener("input", (e) => maskCurrencyInput(e.target)));
+
+          this.els.txForm.addEventListener("submit", (e) => {
+            e.preventDefault();
+            const value = parseCurrency(this.els.txValue.value);
+            if (value <= 0) return this.toast("Valor inválido.");
+
+            const tx = {
+              id: generateId(),
+              type: this.els.txType.value,
+              value,
+              category: this.els.txCategory.value.trim(),
+              date: this.els.txDate.value,
+              description: this.els.txDescription.value.trim() || "Sem descrição",
+            };
+
+            if (!tx.category) return this.toast("Informe uma categoria.");
+            DataManager.addTransaction(tx);
+            this.els.txForm.reset();
+            this.els.txDate.value = formatInputDate(new Date());
+            this.renderAll();
+            this.toast("Transação adicionada com sucesso.");
+          });
+
+          this.els.recForm.addEventListener("submit", (e) => {
+            e.preventDefault();
+            const value = parseCurrency(this.els.recValue.value);
+            if (value <= 0) return this.toast("Valor inválido para gasto fixo.");
+
+            const rec = {
+              id: this.els.recId.value || generateId(),
+              name: this.els.recName.value.trim(),
+              value,
+              category: this.els.recCategory.value.trim(),
+              day: Number(this.els.recDay.value),
+            };
+
+            if (!rec.name || !rec.category || rec.day < 1 || rec.day > 28) {
+              return this.toast("Preencha corretamente o gasto fixo.");
+            }
+
+            DataManager.upsertRecurring(rec);
+            this.clearRecurringForm();
+            DataManager.applyRecurringForMonth();
+            this.renderAll();
+            this.toast("Gasto fixo salvo.");
+          });
+
+          this.els.goalForm.addEventListener("submit", (e) => {
+            e.preventDefault();
+            const goal = {
+              id: this.els.goalId.value || generateId(),
+              name: this.els.goalName.value.trim(),
+              target: parseCurrency(this.els.goalTarget.value),
+              current: parseCurrency(this.els.goalCurrent.value),
+              deadline: this.els.goalDeadline.value,
+            };
+
+            if (!goal.name || goal.target <= 0 || goal.current < 0 || !goal.deadline) {
+              return this.toast("Preencha os campos da meta corretamente.");
+            }
+
+            DataManager.upsertGoal(goal);
+            this.clearGoalForm();
+            this.renderAll();
+            this.toast("Meta financeira salva.");
+          });
+
+          this.els.planForm.addEventListener("submit", (e) => {
+            e.preventDefault();
+            const plan = {
+              month: this.els.planMonth.value,
+              plannedIncome: parseCurrency(this.els.planIncome.value),
+              plannedExpense: parseCurrency(this.els.planExpense.value),
+              expenseLimit: parseCurrency(this.els.planLimit.value),
+            };
+
+            if (!plan.month || plan.plannedIncome < 0 || plan.plannedExpense < 0 || plan.expenseLimit <= 0) {
+              return this.toast("Preencha o planejamento mensal corretamente.");
+            }
+
+            DataManager.upsertMonthlyPlan(plan);
+            this.renderAll();
+            this.toast(`Planejamento salvo para ${formatMonth(plan.month)}.`);
+          });
+
+          this.els.budgetForm.addEventListener("submit", (e) => {
+            e.preventDefault();
+            const month = this.els.planMonth.value;
+            const category = this.els.budgetCategory.value.trim();
+            const limit = parseCurrency(this.els.budgetLimit.value);
+            if (!month) return this.toast("Selecione um mês para o planejamento.");
+            if (!category || limit <= 0) return this.toast("Defina categoria e limite válidos.");
+
+            const plan = DataManager.getPlanByMonth(month);
+            if (!plan) return this.toast("Salve o planejamento do mês antes de criar orçamento por categoria.");
+
+            DataManager.upsertCategoryBudget(month, { category, limit });
+            this.els.budgetForm.reset();
+            this.renderAll();
+            this.toast("Orçamento por categoria salvo.");
+          });
+
+          this.els.crediarioLimitForm.addEventListener("submit", (e) => {
+            e.preventDefault();
+            const limit = parseCurrency(this.els.crediarioLimit.value);
+            if (limit <= 0) return this.toast("Informe um limite de crediário válido.");
+            DataManager.setCrediarioLimit(limit);
+            this.renderAll();
+            this.toast("Limite de crediário salvo.");
+          });
+
+          this.els.crediarioItemForm.addEventListener("submit", (e) => {
+            e.preventDefault();
+            const name = this.els.crediarioItemName.value.trim();
+            const value = parseCurrency(this.els.crediarioItemValue.value);
+            if (!name || value <= 0) return this.toast("Informe item e valor válidos.");
+            DataManager.addCrediarioItem({ id: generateId(), name, value, date: formatInputDate(new Date()) });
+            this.els.crediarioItemForm.reset();
+            this.renderAll();
+            this.toast("Item adicionado ao crediário.");
+          });
+
+          this.els.salaryForm.addEventListener("submit", (e) => {
+            e.preventDefault();
+            const gross = parseCurrency(this.els.salaryGross.value);
+            const inssValue = parseCurrency(this.els.salaryInssPercent.value);
+            if (gross <= 0 || inssValue < 0 || inssValue > gross) return this.toast("Preencha salário e INSS corretamente.");
+            DataManager.setSalaryInfo({ gross, inssValue });
+            this.renderAll();
+            this.toast("Informações de salário salvas.");
+          });
+
+          [this.els.filterType, this.els.filterCategory, this.els.filterDate, this.els.sortDate].forEach((el) => {
+            el.addEventListener("change", () => this.renderTransactions());
+            el.addEventListener("input", () => this.renderTransactions());
+          });
+
+          this.els.planMonth.addEventListener("change", () => this.renderPlanning());
+
+          this.els.btnReset.addEventListener("click", () => {
+            if (!confirm("Tem certeza que deseja resetar todos os dados?")) return;
+            DataManager.reset();
+            this.renderAll();
+            this.toast("Dados resetados.");
+          });
+
+          this.els.btnExport.addEventListener("click", () => {
+            const blob = new Blob([DataManager.exportToJson()], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "dallas-finance-dashboard-backup.json";
+            a.click();
+            URL.revokeObjectURL(url);
+            this.toast("Dados exportados em JSON.");
+          });
+
+          this.els.btnImport.addEventListener("click", () => this.els.importFile.click());
+          this.els.importFile.addEventListener("change", (e) => this.handleImport(e));
+          this.els.themeToggle.addEventListener("click", () => {
+            const nextTheme = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light";
+            applyTheme(nextTheme);
+            this.updateThemeToggleLabel();
+            this.renderAll();
+          });
+        },
+
+        updateThemeToggleLabel() {
+          const isLight = document.documentElement.getAttribute("data-theme") === "light";
+          this.els.themeToggle.textContent = isLight ? "🌙" : "☀";
+          this.els.themeToggle.title = isLight ? "Ativar tema escuro" : "Ativar tema claro";
+          this.els.themeToggle.setAttribute("aria-label", this.els.themeToggle.title);
+        },
+
+        handleImport(event) {
+          const file = event.target.files[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = () => {
+            try {
+              const parsed = JSON.parse(reader.result);
+              DataManager.importFromJson(parsed);
+              DataManager.applyRecurringForMonth();
+              this.renderAll();
+              this.toast("Dados importados com sucesso.");
+            } catch {
+              this.toast("Arquivo JSON inválido.");
+            }
+            event.target.value = "";
+          };
+          reader.readAsText(file);
+        },
+
+        clearRecurringForm() {
+          this.els.recId.value = "";
+          this.els.recForm.reset();
+          this.els.recSubmitBtn.textContent = "Salvar Gasto Fixo";
+        },
+
+        clearGoalForm() {
+          this.els.goalId.value = "";
+          this.els.goalForm.reset();
+          this.els.goalSubmitBtn.textContent = "Salvar Meta";
+        },
+
+        renderAll() {
+          this.renderCategories();
+          this.renderSummary();
+          this.renderGoals();
+          this.renderPlanning();
+          this.renderAlerts();
+          this.renderCrediario();
+          this.renderSalary();
+          this.renderRecurring();
+          this.renderTransactions();
+          ChartManager.renderLine(DataManager.state.transactions);
+          ChartManager.renderPie(DataManager.state.transactions);
+        },
+
+        renderCrediario() {
+          const limit = Number(DataManager.state.crediario.limit || 0);
+          const used = DataManager.state.crediario.items.reduce((sum, item) => sum + Number(item.value), 0);
+          const available = Math.max(limit - used, 0);
+          const usage = limit > 0 ? Math.min((used / limit) * 100, 100) : 0;
+
+          this.els.crediarioLimit.value = limit ? formatCurrency(limit) : "";
+          this.els.crediarioStats.innerHTML = `
+            <div class="mini">
+              <div class="hint">Limite</div>
+              <strong>${formatCurrency(limit)}</strong>
+            </div>
+            <div class="mini">
+              <div class="hint">Usado</div>
+              <strong class="${usage >= 100 ? "negative" : usage >= 80 ? "warning" : "info"}">${formatCurrency(used)} (${Math.round(usage)}%)</strong>
+            </div>
+            <div class="mini">
+              <div class="hint">Disponível</div>
+              <strong class="${available > 0 ? "positive" : "negative"}">${formatCurrency(available)}</strong>
+            </div>
+          `;
+
+          this.els.crediarioUsageBar.style.width = `${usage}%`;
+          this.els.crediarioUsageBar.style.background = usage >= 100
+            ? "linear-gradient(90deg, #ea5455 0%, #b44344 100%)"
+            : usage >= 80
+              ? "linear-gradient(90deg, #f7b84b 0%, #ff9f43 100%)"
+              : "linear-gradient(90deg, #d8b56a 0%, #57c77a 100%)";
+
+          const items = DataManager.state.crediario.items;
+          this.els.crediarioList.innerHTML = items.length
+            ? items.map((item) => `
+              <div class="budget-item">
+                <div style="flex:1;">
+                  <strong>${escapeHtml(item.name)}</strong>
+                  <div class="hint">${formatDateBr(item.date)} • ${formatCurrency(item.value)}</div>
+                </div>
+                <div class="budget-actions">
+                  <button class="btn-danger" data-del-cred="${item.id}">Excluir</button>
+                </div>
+              </div>
+            `).join("")
+            : '<div class="hint">Nenhum item no crediário.</div>';
+
+          this.els.crediarioList.querySelectorAll("[data-del-cred]").forEach((btn) => {
+            btn.addEventListener("click", () => {
+              if (!confirm("Deseja remover este item do crediário?")) return;
+              DataManager.deleteCrediarioItem(btn.dataset.delCred);
+              this.renderAll();
+              this.toast("Item removido do crediário.");
+            });
+          });
+        },
+
+        renderSalary() {
+          const gross = Number(DataManager.state.salary.gross || 0);
+          const inssValue = Number(DataManager.state.salary.inssValue || 0);
+          const credUsed = DataManager.state.crediario.items.reduce((sum, item) => sum + Number(item.value), 0);
+          const finalNet = gross - inssValue - credUsed;
+
+          this.els.salaryGross.value = gross ? formatCurrency(gross) : "";
+          this.els.salaryInssPercent.value = inssValue ? formatCurrency(inssValue) : "";
+          this.els.salarySummary.innerHTML = `
+            <div class="mini">
+              <div class="hint">Salário bruto</div>
+              <strong>${formatCurrency(gross)}</strong>
+            </div>
+            <div class="mini">
+              <div class="hint">Desconto INSS (valor fixo)</div>
+              <strong class="warning">${formatCurrency(inssValue)}</strong>
+            </div>
+            <div class="mini">
+              <div class="hint">Salário final (com crediário)</div>
+              <strong class="${finalNet >= 0 ? "positive" : "negative"}">${formatCurrency(finalNet)}</strong>
+            </div>
+          `;
+        },
+
+        renderCategories() {
+          this.els.categoriesList.innerHTML = DataManager.state.categories
+            .map((c) => `<option value="${escapeHtml(c)}"></option>`)
+            .join("");
+        },
+
+        renderSummary() {
+          const txs = DataManager.state.transactions;
+          const totalGanhos = txs.filter((t) => t.type === "ganho").reduce((s, t) => s + Number(t.value), 0);
+          const totalGastos = txs.filter((t) => t.type === "gasto").reduce((s, t) => s + Number(t.value), 0);
+          const saldo = totalGanhos - totalGastos;
+
+          this.updateKpi(this.els.totalGanhos, formatCurrency(totalGanhos));
+          this.updateKpi(this.els.totalGastos, formatCurrency(totalGastos));
+          this.updateKpi(this.els.saldoAtual, formatCurrency(saldo));
+          this.els.saldoAtual.classList.remove("positive", "negative", "info");
+          this.els.saldoAtual.classList.add(saldo >= 0 ? "positive" : "negative");
+
+          const month = this.els.planMonth.value || formatMonthKey(new Date());
+          const plan = DataManager.getPlanByMonth(month);
+          const stats = DataManager.getMonthStats(month);
+          if (!plan) {
+            this.updateKpi(this.els.plannedHealth, "Sem plano");
+            this.els.plannedHealth.classList.remove("positive", "negative", "warning");
+            this.els.plannedHealth.classList.add("info");
+          } else {
+            const ratio = plan.expenseLimit > 0 ? (stats.expense / plan.expenseLimit) : 0;
+            this.updateKpi(this.els.plannedHealth, `${Math.round(ratio * 100)}%`);
+            this.els.plannedHealth.classList.remove("positive", "negative", "warning", "info");
+            if (ratio >= 1) this.els.plannedHealth.classList.add("negative");
+            else if (ratio >= 0.8) this.els.plannedHealth.classList.add("warning");
+            else this.els.plannedHealth.classList.add("positive");
+          }
+        },
+
+        updateKpi(el, text) {
+          el.textContent = text;
+          el.classList.remove("bump");
+          void el.offsetWidth;
+          el.classList.add("bump");
+        },
+
+        renderGoals() {
+          const goals = DataManager.state.goals
+            .slice()
+            .sort((a, b) => a.deadline.localeCompare(b.deadline));
+
+          this.els.goalsList.innerHTML = goals.length
+            ? goals.map((g) => {
+              const pct = Math.min((Number(g.current) / Number(g.target || 1)) * 100, 100);
+              const daysLeft = diffDaysFromToday(g.deadline);
+              const status = daysLeft < 0 ? "Prazo vencido" : `${daysLeft} dias restantes`;
+              return `
+                <div class="goal-item">
+                  <div style="flex:1;">
+                    <strong>${escapeHtml(g.name)}</strong>
+                    <div class="hint">${formatCurrency(g.current)} de ${formatCurrency(g.target)} • ${status}</div>
+                    <div class="progress-wrap"><div class="progress-bar" style="width:${pct.toFixed(1)}%"></div></div>
+                  </div>
+                  <div class="goal-actions">
+                    <button class="btn-ghost" data-edit-goal="${g.id}">Editar</button>
+                    <button class="btn-danger" data-del-goal="${g.id}">Excluir</button>
+                  </div>
+                </div>
+              `;
+            }).join("")
+            : '<div class="hint">Nenhuma meta cadastrada.</div>';
+
+          this.els.goalsList.querySelectorAll("[data-edit-goal]").forEach((btn) => {
+            btn.addEventListener("click", () => {
+              const goal = DataManager.state.goals.find((g) => g.id === btn.dataset.editGoal);
+              if (!goal) return;
+              this.els.goalId.value = goal.id;
+              this.els.goalName.value = goal.name;
+              this.els.goalTarget.value = formatCurrency(goal.target);
+              this.els.goalCurrent.value = formatCurrency(goal.current);
+              this.els.goalDeadline.value = goal.deadline;
+              this.els.goalSubmitBtn.textContent = "Atualizar Meta";
+            });
+          });
+
+          this.els.goalsList.querySelectorAll("[data-del-goal]").forEach((btn) => {
+            btn.addEventListener("click", () => {
+              if (!confirm("Excluir esta meta financeira?")) return;
+              DataManager.deleteGoal(btn.dataset.delGoal);
+              this.renderAll();
+              this.toast("Meta removida.");
+            });
+          });
+        },
+
+        renderPlanning() {
+          const month = this.els.planMonth.value || formatMonthKey(new Date());
+          const plan = DataManager.getPlanByMonth(month);
+          const stats = DataManager.getMonthStats(month);
+
+          if (plan) {
+            this.els.planIncome.value = formatCurrency(plan.plannedIncome || 0);
+            this.els.planExpense.value = formatCurrency(plan.plannedExpense || 0);
+            this.els.planLimit.value = formatCurrency(plan.expenseLimit || 0);
+          } else {
+            this.els.planIncome.value = "";
+            this.els.planExpense.value = "";
+            this.els.planLimit.value = "";
+          }
+
+          const plannedIncome = plan ? Number(plan.plannedIncome) : 0;
+          const plannedExpense = plan ? Number(plan.plannedExpense) : 0;
+          const expectedBalance = plannedIncome - plannedExpense;
+          const realBalance = stats.income - stats.expense;
+
+          this.els.planSummary.innerHTML = `
+            <div class="mini">
+              <div class="hint">Receita</div>
+              <strong>${formatCurrency(stats.income)} / ${formatCurrency(plannedIncome)}</strong>
+            </div>
+            <div class="mini">
+              <div class="hint">Gastos</div>
+              <strong>${formatCurrency(stats.expense)} / ${formatCurrency(plannedExpense)}</strong>
+            </div>
+            <div class="mini">
+              <div class="hint">Saldo (real / previsto)</div>
+              <strong class="${realBalance >= expectedBalance ? "positive" : "warning"}">${formatCurrency(realBalance)} / ${formatCurrency(expectedBalance)}</strong>
+            </div>
+          `;
+
+          const budgets = plan?.categoryBudgets || [];
+          this.els.budgetList.innerHTML = budgets.length
+            ? budgets.map((b) => {
+              const spent = Number(stats.byCategory[b.category] || 0);
+              const ratio = b.limit > 0 ? spent / Number(b.limit) : 0;
+              const tone = ratio >= 1 ? "negative" : ratio >= 0.8 ? "warning" : "positive";
+              return `
+                <div class="budget-item">
+                  <div style="flex:1;">
+                    <strong>${escapeHtml(b.category)}</strong>
+                    <div class="hint"><span class="${tone}">${formatCurrency(spent)}</span> de ${formatCurrency(b.limit)}</div>
+                    <div class="progress-wrap"><div class="progress-bar" style="width:${Math.min(100, ratio * 100).toFixed(1)}%"></div></div>
+                  </div>
+                  <div class="budget-actions">
+                    <button class="btn-danger" data-del-budget="${b.id}">Excluir</button>
+                  </div>
+                </div>
+              `;
+            }).join("")
+            : '<div class="hint">Sem orçamento por categoria neste mês.</div>';
+
+          this.els.budgetList.querySelectorAll("[data-del-budget]").forEach((btn) => {
+            btn.addEventListener("click", () => {
+              if (!confirm("Excluir este orçamento de categoria?")) return;
+              DataManager.deleteCategoryBudget(month, btn.dataset.delBudget);
+              this.renderAll();
+              this.toast("Orçamento de categoria removido.");
+            });
+          });
+        },
+
+        renderAlerts() {
+          const month = this.els.planMonth.value || formatMonthKey(new Date());
+          const plan = DataManager.getPlanByMonth(month);
+          const stats = DataManager.getMonthStats(month);
+          const alerts = [];
+
+          if (!plan) {
+            alerts.push({ type: "warning", text: `Sem planejamento definido para ${formatMonth(month)}.` });
+          } else {
+            const overallRatio = plan.expenseLimit > 0 ? stats.expense / plan.expenseLimit : 0;
+            if (overallRatio >= 1) {
+              alerts.push({ type: "danger", text: `Você excedeu o limite mensal de gastos (${formatCurrency(plan.expenseLimit)}).` });
+            } else if (overallRatio >= 0.8) {
+              alerts.push({ type: "warning", text: `Atenção: gastos em ${Math.round(overallRatio * 100)}% do limite mensal.` });
+            } else {
+              alerts.push({ type: "good", text: `Gastos sob controle: ${Math.round(overallRatio * 100)}% do limite usado.` });
+            }
+
+            const plannedExpenseRatio = plan.plannedExpense > 0 ? stats.expense / plan.plannedExpense : 0;
+            if (plannedExpenseRatio > 1) {
+              alerts.push({ type: "danger", text: "Você já ultrapassou o gasto planejado deste mês." });
+            }
+
+            (plan.categoryBudgets || []).forEach((b) => {
+              const spent = Number(stats.byCategory[b.category] || 0);
+              const ratio = b.limit > 0 ? spent / Number(b.limit) : 0;
+              if (ratio >= 1) {
+                alerts.push({ type: "danger", text: `${b.category}: orçamento estourado (${formatCurrency(spent)} de ${formatCurrency(b.limit)}).` });
+              } else if (ratio >= 0.8) {
+                alerts.push({ type: "warning", text: `${b.category}: ${Math.round(ratio * 100)}% do orçamento já utilizado.` });
+              }
+            });
+          }
+
+          DataManager.state.goals.forEach((g) => {
+            const progress = Number(g.current) / Number(g.target || 1);
+            const daysLeft = diffDaysFromToday(g.deadline);
+            if (daysLeft <= 7 && progress < 1) {
+              alerts.push({ type: "warning", text: `Meta "${g.name}" está próxima do prazo e ainda em ${Math.round(progress * 100)}%.` });
+            }
+            if (daysLeft < 0 && progress < 1) {
+              alerts.push({ type: "danger", text: `Meta "${g.name}" venceu sem atingir o valor alvo.` });
+            }
+          });
+
+          this.els.alertsList.innerHTML = alerts.length
+            ? alerts.map((a) => `<div class="alert-item ${a.type === "danger" ? "danger" : a.type === "good" ? "good" : ""}">${escapeHtml(a.text)}</div>`).join("")
+            : '<div class="alert-item good">Sem alertas críticos no momento.</div>';
+        },
+
+        renderRecurring() {
+          const items = DataManager.state.recurring;
+          this.els.recurringList.innerHTML = items.length
+            ? items.map((r) => `
+              <div class="rec-item">
+                <div>
+                  <strong>${escapeHtml(r.name)}</strong> • ${formatCurrency(Number(r.value))}
+                  <div class="hint">${escapeHtml(r.category)} • dia ${r.day}</div>
+                </div>
+                <div class="rec-actions">
+                  <button class="btn-ghost" data-edit-rec="${r.id}">Editar</button>
+                  <button class="btn-danger" data-del-rec="${r.id}">Excluir</button>
+                </div>
+              </div>
+            `).join("")
+            : '<div class="hint">Nenhum gasto fixo cadastrado.</div>';
+
+          this.els.recurringList.querySelectorAll("[data-edit-rec]").forEach((btn) => {
+            btn.addEventListener("click", () => {
+              const rec = DataManager.state.recurring.find((r) => r.id === btn.dataset.editRec);
+              if (!rec) return;
+              this.els.recId.value = rec.id;
+              this.els.recName.value = rec.name;
+              this.els.recValue.value = formatCurrency(rec.value);
+              this.els.recCategory.value = rec.category;
+              this.els.recDay.value = rec.day;
+              this.els.recSubmitBtn.textContent = "Atualizar Gasto Fixo";
+            });
+          });
+
+          this.els.recurringList.querySelectorAll("[data-del-rec]").forEach((btn) => {
+            btn.addEventListener("click", () => {
+              if (!confirm("Excluir este gasto fixo?")) return;
+              DataManager.deleteRecurring(btn.dataset.delRec);
+              this.renderAll();
+              this.toast("Gasto fixo removido.");
+            });
+          });
+        },
+
+        renderTransactions() {
+          const { filterType, filterCategory, filterDate, sortDate } = this.els;
+          let rows = [...DataManager.state.transactions];
+
+          if (filterType.value !== "todos") rows = rows.filter((t) => t.type === filterType.value);
+          if (filterCategory.value.trim()) {
+            const c = filterCategory.value.trim().toLowerCase();
+            rows = rows.filter((t) => t.category.toLowerCase().includes(c));
+          }
+          if (filterDate.value) rows = rows.filter((t) => t.date.startsWith(filterDate.value));
+
+          rows.sort((a, b) => sortDate.value === "asc" ? a.date.localeCompare(b.date) : b.date.localeCompare(a.date));
+
+          this.els.txTableBody.innerHTML = rows.length
+            ? rows.map((t) => `
+              <tr>
+                <td><span class="pill ${t.type === "ganho" ? "pill-gain" : "pill-expense"}">${t.type}</span></td>
+                <td>${formatDateBr(t.date)}</td>
+                <td>${escapeHtml(t.category)}</td>
+                <td>${escapeHtml(t.description || "-")}</td>
+                <td class="${t.type === "ganho" ? "positive" : "negative"}">${t.type === "ganho" ? "+" : "-"} ${formatCurrency(Number(t.value))}</td>
+                <td><button class="btn-danger" data-del-tx="${t.id}">Deletar</button></td>
+              </tr>
+            `).join("")
+            : '<tr><td colspan="6" class="hint">Nenhuma transação encontrada para os filtros selecionados.</td></tr>';
+
+          this.els.txMobileList.innerHTML = rows.length
+            ? rows.map((t) => `
+              <article class="tx-mobile-card">
+                <div class="tx-mobile-top">
+                  <span class="pill ${t.type === "ganho" ? "pill-gain" : "pill-expense"}">${t.type}</span>
+                  <strong class="${t.type === "ganho" ? "positive" : "negative"}">${t.type === "ganho" ? "+" : "-"} ${formatCurrency(Number(t.value))}</strong>
+                </div>
+                <div class="tx-mobile-meta">
+                  <span><strong>Data:</strong> ${formatDateBr(t.date)}</span>
+                  <span><strong>Categoria:</strong> ${escapeHtml(t.category)}</span>
+                  <span><strong>Descrição:</strong> ${escapeHtml(t.description || "-")}</span>
+                </div>
+                <div class="tx-mobile-actions">
+                  <button class="btn-danger" data-del-tx="${t.id}">Deletar</button>
+                </div>
+              </article>
+            `).join("")
+            : '<div class="hint">Nenhuma transação encontrada para os filtros selecionados.</div>';
+
+          document.querySelectorAll("[data-del-tx]").forEach((btn) => {
+            btn.addEventListener("click", () => {
+              if (!confirm("Deseja deletar esta transação?")) return;
+              DataManager.deleteTransaction(btn.dataset.delTx);
+              this.renderAll();
+              this.toast("Transação removida.");
+            });
+          });
+        },
+
+        toast(message) {
+          this.els.toast.textContent = message;
+          this.els.toast.classList.add("show");
+          clearTimeout(this.toastTimeout);
+          this.toastTimeout = setTimeout(() => this.els.toast.classList.remove("show"), 2200);
+        },
+      };
+
+      function byId(id) { return document.getElementById(id); }
+
+      function generateId() {
+        return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+      }
+
+      function formatCurrency(value) {
+        return Number(value || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+      }
+
+      function parseCurrency(text) {
+        if (!text) return 0;
+        const cleaned = text.replace(/\s/g, "").replace(/R\$/g, "").replace(/\./g, "").replace(",", ".").replace(/[^0-9.-]/g, "");
+        const value = Number(cleaned);
+        return Number.isFinite(value) ? value : 0;
+      }
+
+      function maskCurrencyInput(input) {
+        const digits = input.value.replace(/\D/g, "");
+        const value = Number(digits || 0) / 100;
+        input.value = formatCurrency(value);
+      }
+
+      function formatDateBr(isoDate) {
+        if (!isoDate) return "-";
+        const [y, m, d] = isoDate.split("-");
+        return `${d}/${m}/${y}`;
+      }
+
+      function formatMonth(monthKey) {
+        const [y, m] = monthKey.split("-");
+        return `${m}/${y}`;
+      }
+
+      function formatMonthKey(date) {
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, "0");
+        return `${y}-${m}`;
+      }
+
+      function getLastMonths(count) {
+        const result = [];
+        const base = new Date();
+        base.setDate(1);
+        for (let i = count - 1; i >= 0; i--) {
+          const d = new Date(base.getFullYear(), base.getMonth() - i, 1);
+          result.push(formatMonthKey(d));
+        }
+        return result;
+      }
+
+      function formatInputDate(date) {
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, "0");
+        const d = String(date.getDate()).padStart(2, "0");
+        return `${y}-${m}-${d}`;
+      }
+
+      function diffDaysFromToday(isoDate) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const target = new Date(`${isoDate}T00:00:00`);
+        const diff = target - today;
+        return Math.ceil(diff / (1000 * 60 * 60 * 24));
+      }
+
+      function chartBaseOptions() {
+        return {
+          scales: {
+            x: { ticks: { color: getCssVar("--muted") }, grid: { color: "rgba(184,137,53,0.14)" } },
+            y: { ticks: { color: getCssVar("--muted") }, grid: { color: "rgba(184,137,53,0.14)" } },
+          },
+          plugins: {
+            legend: { labels: { color: getCssVar("--muted") } },
+          },
+        };
+      }
+
+      function getCssVar(name) {
+        return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+      }
+
+      function escapeHtml(text) {
+        return String(text)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+      }
+
+      function loadSavedTheme() {
+        const theme = localStorage.getItem(THEME_KEY);
+        return theme === "light" ? "light" : "dark";
+      }
+
+      function applyTheme(theme) {
+        document.documentElement.setAttribute("data-theme", theme);
+        localStorage.setItem(THEME_KEY, theme);
+      }
+
+      DataManager.load();
+      DataManager.applyRecurringForMonth();
+      UIManager.init();
+      UIManager.renderAll();
+    })();
+  </script>
+</body>
+</html>
