@@ -1,4 +1,4 @@
-﻿
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -340,6 +340,28 @@
       max-height: 260px;
     }
 
+    .chart-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .chart-range {
+      width: auto;
+      min-width: 130px;
+      min-height: 36px;
+      padding: 6px 10px;
+      font-size: 0.8rem;
+    }
+
+    #pieChart {
+      height: 260px !important;
+      max-height: 260px;
+      touch-action: manipulation;
+    }
+
     .toast {
       position: fixed;
       right: 18px;
@@ -577,6 +599,10 @@
       canvas {
         height: 190px !important;
       }
+      #pieChart {
+        height: 240px !important;
+        max-height: 240px;
+      }
     }
 
     @media (max-width: 480px) {
@@ -634,7 +660,15 @@
 
       <section class="grid charts-grid">
         <article class="card">
-          <h3 class="section-title">Evolução Mensal do Saldo</h3>
+          <div class="chart-head">
+            <h3 class="section-title">Evolução do Saldo</h3>
+            <select id="lineRange" class="chart-range">
+              <option value="month">Mês</option>
+              <option value="3m">3 meses</option>
+              <option value="6m" selected>6 meses</option>
+              <option value="1y">1 ano</option>
+            </select>
+          </div>
           <canvas id="lineChart" height="120"></canvas>
         </article>
         <article class="card">
@@ -864,22 +898,7 @@
             </select>
           </div>
         </div>
-        <div class="table-wrap desktop-only">
-          <table>
-            <thead>
-              <tr>
-                <th>Tipo</th>
-                <th>Data</th>
-                <th>Categoria</th>
-                <th>Descrição</th>
-                <th>Valor</th>
-                <th>Ações</th>
-              </tr>
-            </thead>
-            <tbody id="txTableBody"></tbody>
-          </table>
-        </div>
-        <div id="txMobileList" class="tx-mobile-list mobile-only"></div>
+        <div id="txList" class="budget-list scroll-list"></div>
       </section>
 
       <footer class="site-footer">
@@ -894,8 +913,8 @@
 
   <script>
     (() => {
-      const STORAGE_KEY = "findash_data_v2";
-      const THEME_KEY = "findash_theme";
+      const STORAGE_KEY = "DallasDash_data_v2";
+      const THEME_KEY = "DallasDash_theme";
       const defaultCategories = ["Alimentação", "Transporte", "Moradia", "Lazer", "Outros"];
 
       const DataManager = {
@@ -916,7 +935,10 @@
         },
 
         load() {
-          const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem("findash_data_v1");
+          const raw =
+            localStorage.getItem(STORAGE_KEY) ||
+            localStorage.getItem("findash_data_v2") ||
+            localStorage.getItem("findash_data_v1");
           if (!raw) return;
           try {
             const parsed = JSON.parse(raw);
@@ -1123,26 +1145,43 @@
         lineChart: null,
         pieChart: null,
 
-        renderLine(transactions) {
-          const months = getLastMonths(12);
-          const monthly = new Map(months.map((m) => [m, 0]));
-          transactions.forEach((tx) => {
-            const month = tx.date.slice(0, 7);
-            if (!monthly.has(month)) return;
-            const signal = tx.type === "ganho" ? 1 : -1;
-            monthly.set(month, (monthly.get(month) || 0) + signal * Number(tx.value));
-          });
+        renderLine(transactions, range = "6m") {
+          let labels = [];
+          let values = [];
 
-          const labels = months;
-          const values = labels.map((m) => Number(monthly.get(m) || 0));
+          if (range === "month") {
+            const now = new Date();
+            const monthKey = formatMonthKey(now);
+            const days = getDaysInCurrentMonth(now);
+            const daily = new Map(days.map((d) => [d, 0]));
+            transactions.forEach((tx) => {
+              if (!tx.date.startsWith(monthKey)) return;
+              const signal = tx.type === "ganho" ? 1 : -1;
+              daily.set(tx.date, (daily.get(tx.date) || 0) + signal * Number(tx.value));
+            });
+            labels = days.map((d) => d.slice(-2));
+            values = days.map((d) => Number(daily.get(d) || 0));
+          } else {
+            const count = range === "3m" ? 3 : range === "6m" ? 6 : 12;
+            const months = getLastMonths(count);
+            const monthly = new Map(months.map((m) => [m, 0]));
+            transactions.forEach((tx) => {
+              const month = tx.date.slice(0, 7);
+              if (!monthly.has(month)) return;
+              const signal = tx.type === "ganho" ? 1 : -1;
+              monthly.set(month, (monthly.get(month) || 0) + signal * Number(tx.value));
+            });
+            labels = months.map(formatMonth);
+            values = months.map((m) => Number(monthly.get(m) || 0));
+          }
 
           if (this.lineChart) this.lineChart.destroy();
           this.lineChart = new Chart(document.getElementById("lineChart"), {
             type: "line",
             data: {
-              labels: labels.map(formatMonth),
+              labels,
               datasets: [{
-                label: "Saldo por mês",
+                label: range === "month" ? "Saldo por dia" : "Saldo por mês",
                 data: values,
                 borderColor: getCssVar("--info"),
                 backgroundColor: "rgba(184,137,53,0.20)",
@@ -1176,6 +1215,8 @@
               datasets: [{ data: values, backgroundColor: labels.map((_, i) => colors[i % colors.length]) }],
             },
             options: {
+              maintainAspectRatio: true,
+              aspectRatio: 1,
               plugins: {
                 legend: { labels: { color: getCssVar("--muted") } },
               },
@@ -1193,6 +1234,7 @@
             totalGanhos: byId("totalGanhos"),
             totalGastos: byId("totalGastos"),
             plannedHealth: byId("plannedHealth"),
+            lineRange: byId("lineRange"),
             txForm: byId("txForm"),
             txType: byId("txType"),
             txValue: byId("txValue"),
@@ -1238,8 +1280,7 @@
             salaryGross: byId("salaryGross"),
             salaryInssPercent: byId("salaryInssPercent"),
             salarySummary: byId("salarySummary"),
-            txTableBody: byId("txTableBody"),
-            txMobileList: byId("txMobileList"),
+            txList: byId("txList"),
             filterType: byId("filterType"),
             filterCategory: byId("filterCategory"),
             filterDate: byId("filterDate"),
@@ -1404,6 +1445,9 @@
             el.addEventListener("change", () => this.renderTransactions());
             el.addEventListener("input", () => this.renderTransactions());
           });
+          this.els.lineRange.addEventListener("change", () => {
+            ChartManager.renderLine(DataManager.state.transactions, this.els.lineRange.value);
+          });
 
           this.els.planMonth.addEventListener("change", () => this.renderPlanning());
 
@@ -1483,7 +1527,7 @@
           this.renderSalary();
           this.renderRecurring();
           this.renderTransactions();
-          ChartManager.renderLine(DataManager.state.transactions);
+          ChartManager.renderLine(DataManager.state.transactions, this.els.lineRange.value);
           ChartManager.renderPie(DataManager.state.transactions);
         },
 
@@ -1825,35 +1869,21 @@
 
           rows.sort((a, b) => sortDate.value === "asc" ? a.date.localeCompare(b.date) : b.date.localeCompare(a.date));
 
-          this.els.txTableBody.innerHTML = rows.length
+          this.els.txList.innerHTML = rows.length
             ? rows.map((t) => `
-              <tr>
-                <td><span class="pill ${t.type === "ganho" ? "pill-gain" : "pill-expense"}">${t.type}</span></td>
-                <td>${formatDateBr(t.date)}</td>
-                <td>${escapeHtml(t.category)}</td>
-                <td>${escapeHtml(t.description || "-")}</td>
-                <td class="${t.type === "ganho" ? "positive" : "negative"}">${t.type === "ganho" ? "+" : "-"} ${formatCurrency(Number(t.value))}</td>
-                <td><button class="btn-danger" data-del-tx="${t.id}">Deletar</button></td>
-              </tr>
-            `).join("")
-            : '<tr><td colspan="6" class="hint">Nenhuma transação encontrada para os filtros selecionados.</td></tr>';
-
-          this.els.txMobileList.innerHTML = rows.length
-            ? rows.map((t) => `
-              <article class="tx-mobile-card">
-                <div class="tx-mobile-top">
-                  <span class="pill ${t.type === "ganho" ? "pill-gain" : "pill-expense"}">${t.type}</span>
-                  <strong class="${t.type === "ganho" ? "positive" : "negative"}">${t.type === "ganho" ? "+" : "-"} ${formatCurrency(Number(t.value))}</strong>
+              <div class="budget-item">
+                <div style="flex:1;">
+                  <div class="tx-mobile-top">
+                    <span class="pill ${t.type === "ganho" ? "pill-gain" : "pill-expense"}">${t.type}</span>
+                    <strong class="${t.type === "ganho" ? "positive" : "negative"}">${t.type === "ganho" ? "+" : "-"} ${formatCurrency(Number(t.value))}</strong>
+                  </div>
+                  <div class="hint">${formatDateBr(t.date)} • ${escapeHtml(t.category)}</div>
+                  <div>${escapeHtml(t.description || "-")}</div>
                 </div>
-                <div class="tx-mobile-meta">
-                  <span><strong>Data:</strong> ${formatDateBr(t.date)}</span>
-                  <span><strong>Categoria:</strong> ${escapeHtml(t.category)}</span>
-                  <span><strong>Descrição:</strong> ${escapeHtml(t.description || "-")}</span>
-                </div>
-                <div class="tx-mobile-actions">
+                <div class="budget-actions">
                   <button class="btn-danger" data-del-tx="${t.id}">Deletar</button>
                 </div>
-              </article>
+              </div>
             `).join("")
             : '<div class="hint">Nenhuma transação encontrada para os filtros selecionados.</div>';
 
@@ -1926,6 +1956,14 @@
         return result;
       }
 
+      function getDaysInCurrentMonth(baseDate = new Date()) {
+        const y = baseDate.getFullYear();
+        const m = baseDate.getMonth();
+        const lastDay = new Date(y, m + 1, 0).getDate();
+        const monthKey = formatMonthKey(baseDate);
+        return Array.from({ length: lastDay }, (_, i) => `${monthKey}-${String(i + 1).padStart(2, "0")}`);
+      }
+
       function formatInputDate(date) {
         const y = date.getFullYear();
         const m = String(date.getMonth() + 1).padStart(2, "0");
@@ -1967,7 +2005,7 @@
       }
 
       function loadSavedTheme() {
-        const theme = localStorage.getItem(THEME_KEY);
+        const theme = localStorage.getItem(THEME_KEY) || localStorage.getItem("findash_theme");
         return theme === "light" ? "light" : "dark";
       }
 
