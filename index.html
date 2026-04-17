@@ -361,6 +361,33 @@
       margin-bottom: 8px;
     }
 
+    .chart-tabs {
+      display: inline-flex;
+      gap: 6px;
+      margin-bottom: 10px;
+      padding: 4px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--panel) 92%, #000 8%);
+    }
+
+    .tab-btn {
+      border-radius: 999px;
+      min-height: 30px;
+      padding: 4px 10px;
+      font-size: 0.78rem;
+      line-height: 1;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--muted);
+    }
+
+    .tab-btn.active {
+      background: linear-gradient(180deg, #8e6e34 0%, #6f5527 100%);
+      color: #fff6e4;
+      border-color: #a88242;
+    }
+
     .chart-range {
       width: auto;
       min-width: 130px;
@@ -585,6 +612,7 @@
       .topbar span { font-size: 0.78rem; }
       .card { padding: 12px; border-radius: var(--radius); }
       .kpi-value { font-size: 1.14rem; }
+      .chart-tabs { width: 100%; justify-content: center; }
       .actions { grid-template-columns: 1fr; }
       .rec-item, .goal-item, .budget-item, .alert-item {
         flex-direction: column;
@@ -685,7 +713,11 @@
           </div>
         </article>
         <article class="card">
-          <h3 class="section-title">Categorias de Gastos</h3>
+          <h3 class="section-title">Categorias em Pizza</h3>
+          <div class="chart-tabs">
+            <button id="pieTabExpense" class="tab-btn active" type="button">Gastos</button>
+            <button id="pieTabIncome" class="tab-btn" type="button">Ganhos</button>
+          </div>
           <div class="chart-canvas pie-canvas">
             <canvas id="pieChart"></canvas>
           </div>
@@ -1214,21 +1246,29 @@
           });
         },
 
-        renderPie(transactions) {
-          const expenses = transactions.filter((tx) => tx.type === "gasto");
+        renderPie(transactions, mode = "gasto") {
+          const dataByType = transactions.filter((tx) => tx.type === mode);
           const byCategory = new Map();
-          expenses.forEach((tx) => byCategory.set(tx.category, (byCategory.get(tx.category) || 0) + Number(tx.value)));
+          dataByType.forEach((tx) => byCategory.set(tx.category, (byCategory.get(tx.category) || 0) + Number(tx.value)));
 
           const labels = [...byCategory.keys()];
           const values = [...byCategory.values()];
-          const colors = ["#d8b56a", "#b48935", "#8e6e34", "#57c77a", "#f1c36b", "#f26464"];
+          const colors = mode === "ganho"
+            ? ["#57c77a", "#7fd89a", "#3ca765", "#d8b56a", "#f1c36b", "#2f9d59"]
+            : ["#d8b56a", "#b48935", "#8e6e34", "#57c77a", "#f1c36b", "#f26464"];
+
+          const pieLabels = labels.length ? labels : ["Sem dados"];
+          const pieValues = values.length ? values : [1];
 
           if (this.pieChart) this.pieChart.destroy();
           this.pieChart = new Chart(document.getElementById("pieChart"), {
             type: "pie",
             data: {
-              labels,
-              datasets: [{ data: values, backgroundColor: labels.map((_, i) => colors[i % colors.length]) }],
+              labels: pieLabels,
+              datasets: [{
+                data: pieValues,
+                backgroundColor: labels.length ? pieLabels.map((_, i) => colors[i % colors.length]) : ["#6b6256"],
+              }],
             },
             options: {
               responsive: true,
@@ -1243,6 +1283,7 @@
 
       const UIManager = {
         els: {},
+        pieMode: "gasto",
 
         init() {
           this.els = {
@@ -1302,6 +1343,8 @@
             filterDate: byId("filterDate"),
             sortDate: byId("sortDate"),
             categoriesList: byId("categoriesList"),
+            pieTabExpense: byId("pieTabExpense"),
+            pieTabIncome: byId("pieTabIncome"),
             toast: byId("toast"),
             btnReset: byId("btnReset"),
             btnExport: byId("btnExport"),
@@ -1319,6 +1362,7 @@
           this.els.planMonth.value = monthKey;
           this.els.filterDate.value = monthKey;
           this.els.todayLabel.textContent = `Hoje: ${formatDateBr(formatInputDate(now))}`;
+          this.updatePieTabs();
           this.setupEvents();
         },
 
@@ -1464,6 +1508,16 @@
           this.els.lineRange.addEventListener("change", () => {
             ChartManager.renderLine(DataManager.state.transactions, this.els.lineRange.value);
           });
+          this.els.pieTabExpense.addEventListener("click", () => {
+            this.pieMode = "gasto";
+            this.updatePieTabs();
+            ChartManager.renderPie(DataManager.state.transactions, this.pieMode);
+          });
+          this.els.pieTabIncome.addEventListener("click", () => {
+            this.pieMode = "ganho";
+            this.updatePieTabs();
+            ChartManager.renderPie(DataManager.state.transactions, this.pieMode);
+          });
 
           this.els.planMonth.addEventListener("change", () => this.renderPlanning());
 
@@ -1500,6 +1554,11 @@
           this.els.themeToggle.textContent = isLight ? "🌙" : "☀";
           this.els.themeToggle.title = isLight ? "Ativar tema escuro" : "Ativar tema claro";
           this.els.themeToggle.setAttribute("aria-label", this.els.themeToggle.title);
+        },
+
+        updatePieTabs() {
+          this.els.pieTabExpense.classList.toggle("active", this.pieMode === "gasto");
+          this.els.pieTabIncome.classList.toggle("active", this.pieMode === "ganho");
         },
 
         handleImport(event) {
@@ -1544,7 +1603,7 @@
           this.renderRecurring();
           this.renderTransactions();
           ChartManager.renderLine(DataManager.state.transactions, this.els.lineRange.value);
-          ChartManager.renderPie(DataManager.state.transactions);
+          ChartManager.renderPie(DataManager.state.transactions, this.pieMode);
         },
 
         renderCrediario() {
